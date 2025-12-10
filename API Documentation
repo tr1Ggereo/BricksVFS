@@ -1,0 +1,77 @@
+BricksVFS API Documentation (v0.1.4)
+
+Base URL: http://localhost:8080 (Default)
+
+Read Operations (Public)
+
+📂 List Files
+
+GET /api/files
+
+Query: path (e.g., /Photos)
+
+Response: JSON array of files.
+
+🔍 Search
+
+GET /api/search
+
+Query: q (Search term)
+
+Response: JSON array of matching files with full paths.
+
+📥 Download File
+
+GET /api/file
+
+Query: name (Full path to file)
+
+Response: Raw file content with correct MIME type.
+
+👁️ Preview Image
+
+GET /api/preview
+
+Query: name (Full path)
+
+Response: Optimized JPEG image (max 1920px).
+
+📊 Disk Stats
+
+GET /api/stats
+
+Response: JSON object (total_bytes, used_bytes, free_bytes).
+
+Write Operations (Secured)
+
+Requires Authorization: Basic ... header if root_password is set in config.
+
+⬆️ Upload File
+
+POST /api/upload
+
+Query: name (Destination path)
+
+Body: Raw file binary data.
+
+📁 Create Directory
+
+POST /api/mkdir
+
+Query: path (New folder path)
+
+🗑️ Delete Item
+
+POST /api/delete
+
+Query: name (Path to delete)
+
+Note: Deletes folders recursively!
+
+📦 Move / Rename
+
+POST /api/move
+
+Query: old (Source path)
+
+Query: new (Destination path)
