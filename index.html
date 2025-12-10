@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BricksVFS 0.1.4</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --folder: #f59e0b;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; padding-bottom: 60px; }
+        
+        .container { max-width: 1200px; margin: 0 auto; display: flex; gap: 20px; }
+        .main-panel { flex: 1; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        
+        .header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+        .header h1 { font-size: 1.25rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px; }
+        
+        .toolbar { padding: 15px 20px; background: #f9fafb; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        
+        /* Search Box */
+        .search-box {
+            position: relative;
+            flex-grow: 1;
+            max-width: 300px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 8px 32px 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .search-box span {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            cursor: pointer;
+        }
+
+        .breadcrumbs { flex-grow: 1; font-size: 0.95rem; color: var(--text-light); display: flex; gap: 5px; align-items: center; overflow-x: auto; white-space: nowrap; margin-right: 10px; }
+        .crumb { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: 0.2s; }
+        .crumb:hover { background: #e5e7eb; color: var(--text-main); }
+        .crumb.active { font-weight: 600; color: var(--text-main); cursor: default; }
+        .separator { color: #9ca3af; }
+
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-outline { background: white; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { background: #f9fafb; border-color: #d1d5db; }
+        
+        .file-list { overflow-y: auto; max-height: 70vh; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 20px; background: #f9fafb; color: var(--text-light); font-weight: 500; font-size: 0.85rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+        td { padding: 12px 20px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f9fafb; }
+
+        .item-name { display: flex; align-items: center; gap: 12px; font-weight: 500; cursor: pointer; }
+        .item-icon { font-size: 1.4rem; width: 30px; text-align: center; }
+        .folder-icon { color: var(--folder); }
+        .file-icon { color: var(--text-light); }
+        .item-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+
+        .meta-info { font-size: 0.85rem; color: var(--text-light); }
+        .badge { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: #e5e7eb; color: #4b5563; }
+        .badge.db { background: #dbeafe; color: #1e40af; }
+
+        .actions { display: flex; gap: 4px; justify-content: flex-end; opacity: 0.6; transition: 0.2s; }
+        tr:hover .actions { opacity: 1; }
+        .action-btn { padding: 6px; border-radius: 4px; border: 1px solid transparent; background: transparent; cursor: pointer; color: var(--text-light); font-size: 1.1em; }
+        .action-btn:hover { background: white; border-color: var(--border); color: var(--primary); shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-del:hover { color: var(--danger); }
+        .btn-edit:hover { color: var(--warning); }
+        .btn-move:hover { color: var(--success); }
+
+        /* FOOTER STATS */
+        .footer-stats {
+            padding: 10px 20px;
+            border-top: 1px solid var(--border);
+            background: #f9fafb;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .progress-bar {
+            flex-grow: 1;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+        .modal { background: white; width: 90%; max-width: 1000px; height: 85vh; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f9fafb; }
+        .modal-body { flex: 1; overflow: auto; padding: 0; background: #111; display: flex; align-items: center; justify-content: center; position: relative; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light); }
+        
+        .preview-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .preview-text { color: #d4d4d4; font-family: 'Consolas', monospace; padding: 20px; white-space: pre-wrap; width: 100%; height: 100%; box-sizing: border-box; font-size: 14px; text-align: left; align-self: flex-start; }
+        .preview-msg { color: white; text-align: center; }
+
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="main-panel">
+        <div class="header">
+            <h1>🧱 BricksVFS <span style="font-size:0.8em; color:var(--text-light); font-weight:400;">v0.1.4</span></h1>
+            <div style="display:flex; gap:10px">
+                <span id="status" style="font-size:0.9rem; color:var(--text-light); align-self:center;">Ready</span>
+                <button class="btn btn-outline" onclick="loadFiles()">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <button class="btn btn-outline" onclick="goUp()">⬆ Up</button>
+            <div class="breadcrumbs" id="breadcrumbs"></div>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search files..." onkeydown="if(event.key==='Enter') doSearch()">
+                <span onclick="doSearch()">🔍</span>
+            </div>
+
+            <button class="btn btn-outline" onclick="createFolder()">📁 New Folder</button>
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">⬆ Upload</button>
+            <input type="file" id="fileInput" onchange="uploadFile()">
+        </div>
+
+        <div class="file-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50%">Name</th>
+                        <th>Size</th>
+                        <th>Location</th>
+                        <th style="text-align:right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="fileTableBody">
+                    <tr><td colspan="4" style="text-align:center; padding: 40px; color: #9ca3af;">Loading files...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-stats">
+            <span id="statsText">Loading stats...</span>
+            <div class="progress-bar">
+                <div class="progress-fill" id="statsBar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="previewModal" onclick="if(event.target===this) closeModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 style="margin:0" id="modalTitle">Preview</h3>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalContent"></div>
+    </div>
+</div>
+
+<script>
+    let currentPath = "/";
+    let isSearchMode = false;
+
+    const API = {
+        LIST: '/api/files',
+        FILE: '/api/file',
+        PREVIEW: '/api/preview',
+        THUMB: '/api/thumb',
+        UPLOAD: '/api/upload',
+        MKDIR: '/api/mkdir',
+        DELETE: '/api/delete',
+        MOVE: '/api/move',
+        SEARCH: '/api/search', 
+        STATS: '/api/stats'    
+    };
+
+    async function loadFiles() {
+        isSearchMode = false;
+        document.getElementById('searchInput').value = '';
+        updateStatus("Loading...");
+        renderBreadcrumbs();
+        updateStats();
+
+        try {
+            const res = await fetch(`${API.LIST}?path=${encodeURIComponent(currentPath)}&t=${Date.now()}`);
+            if (!res.ok) throw new Error("Failed");
+            const files = await res.json();
+            renderTable(files);
+            updateStatus(`${files.length} items`);
+        } catch (e) {
+            document.getElementById('fileTableBody').innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger); padding:30px;">Connection Error</td></tr>`;
+        }
+    }
+
+    async function doSearch() {
+        const query = document.getElementById('searchInput').value.trim();
+        if(!query) { loadFiles(); return; }
+
+        isSearchMode = true;
+        updateStatus(`Searching for "${query}"...`);
+        document.getElementById('breadcrumbs').innerHTML = `<span class="crumb active">🔍 Search Results: "${query}"</span>`;
+        
+        try {
+            const res = await fetch(`${API.SEARCH}?q=${encodeURIComponent(query)}`);
+            const files = await res.json();
+            renderTable(files, true); 
+            updateStatus(`Found ${files.length} items`);
+        } catch(e) {
+            alert("Search failed");
+        }
+    }
+
+    function renderTable(files, isSearch = false) {
+        const tbody = document.getElementById('fileTableBody');
+        tbody.innerHTML = '';
+        if (files.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 40px; color: #9ca3af;">${isSearch ? 'No matches found' : 'Folder is empty'}</td></tr>`;
+            return;
+        }
+
+        files.sort((a, b) => b.is_dir - a.is_dir || a.name.localeCompare(b.name));
+
+        files.forEach(f => {
+            const tr = document.createElement('tr');
+            let iconHtml = '';
+            const ext = f.name.split('.').pop().toLowerCase();
+            
+            const fullPath = isSearch ? f.path : (currentPath === '/' ? '' : currentPath) + '/' + f.name;
+            const encodedPath = encodeURIComponent(fullPath);
+            const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/')) || '/';
+
+            if (f.is_dir) {
+                iconHtml = `<span class="item-icon folder-icon">📁</span>`;
+                tr.ondblclick = () => { currentPath = fullPath; loadFiles(); };
+            } else if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
+                iconHtml = `<img src="${API.THUMB}?name=${encodedPath}" class="item-thumb" loading="lazy">`;
+            } else {
+                iconHtml = `<span class="item-icon file-icon">📄</span>`;
+            }
+
+            let displayName = f.name;
+            let displaySub = isSearch ? `<br><span style="font-size:0.75em;color:#999">${parentDir}</span>` : '';
+
+            const nameHtml = `<div class="item-name" onclick="${f.is_dir ? `enterFolderByPath('${fullPath}')` : ''}">${iconHtml}<span>${displayName}${displaySub}</span></div>`;
+            const sizeHtml = `<span class="meta-info">${f.is_dir ? '-' : formatSize(f.size)}</span>`;
+            const locHtml = `<span class="badge db">#${f.block}</span>`;
+
+            let actionsHtml = '';
+            if (!f.is_dir) {
+                actionsHtml += `<button class="action-btn" title="Preview" onclick="previewFile('${fullPath}', '${ext}')">👁️</button>`;
+                actionsHtml += `<a href="${API.FILE}?name=${encodedPath}" download="${f.name}" class="action-btn" style="text-decoration:none; display:inline-block; padding-top:4px;">⬇️</a>`;
+            } else {
+                actionsHtml += `<button class="action-btn" title="Open" onclick="enterFolderByPath('${fullPath}')">➡️</button>`;
+            }
+            
+            if (!isSearch) {
+                actionsHtml += `<button class="action-btn btn-edit" title="Rename" onclick="renameItem('${f.name}')">✏️</button>`;
+                actionsHtml += `<button class="action-btn btn-move" title="Move" onclick="moveItem('${f.name}')">📦</button>`;
+            }
+            
+            actionsHtml += `<button class="action-btn btn-del" title="Delete" onclick="deleteItem('${fullPath}')">🗑️</button>`;
+
+            tr.innerHTML = `<td>${nameHtml}</td><td>${sizeHtml}</td><td>${locHtml}</td><td><div class="actions">${actionsHtml}</div></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function updateStats() {
+        try {
+            const res = await fetch(API.STATS);
+            const stats = await res.json();
+            
+            const usedMB = (stats.used_bytes / 1024 / 1024).toFixed(2);
+            const totalMB = (stats.total_bytes / 1024 / 1024).toFixed(0);
+            const percent = ((stats.used_bytes / stats.total_bytes) * 100).toFixed(1);
+            
+            // ENGLISH TEXT HERE
+            document.getElementById('statsText').innerText = `Data: ${usedMB} MB (Allocated: ${totalMB} MB)`;
+            document.getElementById('statsBar').style.width = `${percent}%`;
+            
+            const bar = document.getElementById('statsBar');
+            if(percent > 90) bar.style.background = '#ef4444'; // Red
+            else if(percent > 70) bar.style.background = '#f59e0b'; // Yellow
+            else bar.style.background = '#10b981'; // Green
+            
+        } catch(e) {}
+    }
+
+    function enterFolderByPath(path) {
+        currentPath = path;
+        loadFiles();
+    }
+
+    function renderBreadcrumbs() {
+        const bc = document.getElementById('breadcrumbs');
+        bc.innerHTML = '';
+        const parts = currentPath.split('/').filter(p => p);
+        const root = document.createElement('span');
+        root.className = parts.length === 0 ? 'crumb active' : 'crumb';
+        root.innerText = '🏠 Root';
+        root.onclick = () => { currentPath = "/"; loadFiles(); };
+        bc.appendChild(root);
+
+        let accum = "";
+        parts.forEach((p, idx) => {
+            bc.innerHTML += `<span class="separator">/</span>`;
+            accum += "/" + p;
+            const target = accum; 
+            const crumb = document.createElement('span');
+            crumb.className = (idx === parts.length - 1) ? 'crumb active' : 'crumb';
+            crumb.innerText = p;
+            crumb.onclick = () => { currentPath = target; loadFiles(); };
+            bc.appendChild(crumb);
+        });
+    }
+
+    function goUp() {
+        if (currentPath === '/') return;
+        const lastSlash = currentPath.lastIndexOf('/');
+        currentPath = currentPath.substring(0, lastSlash);
+        if (currentPath === '') currentPath = '/';
+        loadFiles();
+    }
+
+    async function uploadFile() {
+        const input = document.getElementById('fileInput');
+        if (!input.files[0]) return;
+        const file = input.files[0];
+        const path = (currentPath === '/' ? '' : currentPath) + '/' + file.name;
+        updateStatus(`Uploading ${file.name}...`);
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            await fetch(`${API.UPLOAD}?name=${encodeURIComponent(path)}`, { method: 'POST', body: e.target.result });
+            loadFiles();
+            input.value = '';
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    async function createFolder() {
+        const name = prompt("Enter folder name:");
+        if (!name) return;
+        const path = (currentPath === '/' ? '' : currentPath) + '/' + name;
+        await fetch(`${API.MKDIR}?path=${encodeURIComponent(path)}`, { method: 'POST' });
+        loadFiles();
+    }
+
+    async function deleteItem(path) {
+        if(!confirm(`Delete: ${path}?\n(Warning: Folders are deleted recursively!)`)) return;
+        await fetch(`${API.DELETE}?name=${encodeURIComponent(path)}`, { method: 'POST' });
+        loadFiles();
+    }
+
+    async function renameItem(oldName) {
+        const newName = prompt("New name:", oldName);
+        if (!newName || newName === oldName) return;
+        
+        const oldPath = (currentPath === '/' ? '' : currentPath) + '/' + oldName;
+        const newPath = (currentPath === '/' ? '' : currentPath) + '/' + newName;
+        
+        const res = await fetch(`${API.MOVE}?old=${encodeURIComponent(oldPath)}&new=${encodeURIComponent(newPath)}`, { method: 'POST' });
+        if(res.ok) loadFiles();
+        else alert("Rename failed");
+    }
+
+    async function moveItem(fileName) {
+        const targetFolder = prompt("Move to folder (e.g. /Photos):", "/");
+        if (targetFolder === null) return;
+        
+        const oldPath = (currentPath === '/' ? '' : currentPath) + '/' + fileName;
+        let cleanTarget = targetFolder.endsWith('/') && targetFolder.length > 1 ? targetFolder.slice(0, -1) : targetFolder;
+        if (cleanTarget === "") cleanTarget = "/";
+        
+        const newPath = (cleanTarget === '/' ? '' : cleanTarget) + '/' + fileName;
+        
+        const res = await fetch(`${API.MOVE}?old=${encodeURIComponent(oldPath)}&new=${encodeURIComponent(newPath)}`, { method: 'POST' });
+        if(res.ok) loadFiles();
+        else alert("Move failed");
+    }
+
+    async function previewFile(path, ext) {
+        const modal = document.getElementById('previewModal');
+        const content = document.getElementById('modalContent');
+        const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+        const url = `${isImage ? API.PREVIEW : API.FILE}?name=${encodeURIComponent(path)}&t=${Date.now()}`;
+
+        modal.style.display = 'flex';
+        content.innerHTML = '<div style="color:white">Loading...</div>';
+
+        if (isImage) content.innerHTML = `<img src="${url}" class="preview-img">`;
+        else if (['txt','c','cpp','h','js','html'].includes(ext)) {
+            const res = await fetch(url);
+            const text = await res.text();
+            content.innerHTML = `<div class="preview-text">${text.replace(/</g, "&lt;")}</div>`;
+        } else {
+            content.innerHTML = `<div class="preview-msg"><h3>No preview</h3><a href="${API.FILE}?name=${encodeURIComponent(path)}" class="btn btn-primary" download>Download</a></div>`;
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('previewModal').style.display = 'none';
+        document.getElementById('modalContent').innerHTML = '';
+    }
+
+    function formatSize(b) {
+        if (b === 0) return '0 B';
+        const k = 1024;
+        const i = Math.floor(Math.log(b) / Math.log(k));
+        return parseFloat((b / Math.pow(k, i)).toFixed(1)) + ' ' + ['B', 'KB', 'MB', 'GB'][i];
+    }
+
+    function updateStatus(msg) {
+        document.getElementById('status').innerText = msg;
+    }
+
+    loadFiles();
+</script>
+</body>
+</html>
