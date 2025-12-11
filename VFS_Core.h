@@ -23,7 +23,7 @@ struct VFSConfig {
 };
 
 namespace VFSConst {
-    const char SIGNATURE[8] = "BRVFS"; // v0.1.4 Signature
+    const char SIGNATURE[8] = "BRVFS"; // v0.1.5 Signature
     const int BLOCK_SIZE = 4096;
     const int PAYLOAD_SIZE = BLOCK_SIZE; 
     
@@ -107,7 +107,7 @@ private:
     std::shared_ptr<VirtualDisk> disk;
     std::vector<int32_t> fatCache;       
     std::vector<std::vector<uint8_t>> bitmapCache;
-    int capacityMB; // Loaded from config for formatting
+    int capacityMB; 
     
     mutable std::shared_mutex diskMutex; 
 
@@ -122,8 +122,6 @@ private:
     void recoverFromJournal();
 
     void runFSCK();
-    void markChainUsed(int startBlock, std::vector<std::vector<uint8_t>>& newBitmap, uint32_t& checkedCount, int& currentScanningBlock);
-    void traverseDirectoryRecursive(int dirBlock, std::vector<std::vector<uint8_t>>& newBitmap, std::set<int>& visitedDirs, uint32_t& checkedCount, int& currentScanningBlock);
 
     void flushFatEntry(int globalBlockId, int32_t value);
     void flushBitmapBlock(int diskIdx);
@@ -145,7 +143,6 @@ public:
     int getNextBlock(int globalCurrent);
     
     bool mount();
-    // Format now requires capacity to be passed
     static bool format(const std::string& basePath, int capacityMB);
     std::shared_ptr<VirtualDisk> getDisk() const { return disk; }
     
@@ -164,7 +161,7 @@ private:
     
     void _searchRecursive(int dirBlock, const std::string& currentPath, const std::string& query, std::vector<FileInfo>& results);
 
-    std::vector<char> readChain(int startBlock); 
+    std::vector<char> readChain(int startBlock, size_t knownSize = 0); 
 
 public:
     explicit FileManager(std::shared_ptr<BlockManager> bm);
