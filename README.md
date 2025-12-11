@@ -36,7 +36,7 @@ Data Blocks: Actual file content (4KB per block).
 
 Building
 
-Requires a C++17 compiler.
+Requires a C++20 compiler.
 
 Download and place the header files in the project folder:
 
@@ -44,7 +44,7 @@ stb_image.h, stb_image_write.h, stb_image_resize2.h from nothings/stb
 
 httplib.h from yhirose/cpp-httplib
 
-Compile: g++ server.cpp VFS_Core.cpp -o server.exe -std=c++17 -lws2_32 (Windows) or -lpthread (Linux).
+Compile: g++ server.cpp VFS_Core.cpp -o server.exe -std=c++20 -lws2_32 (Windows) or -lpthread (Linux).
 
 Configuration
 
